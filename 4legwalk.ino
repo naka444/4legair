@@ -2,13 +2,16 @@
 #include <stdio.h>
 #define AD0 56 //センサのピンで指定する奴じゃない本当のアドレス？あとで書き直す
 #define AD1 57 //0から順にデータ配列に入る、足の番号1~3とデータ配列1～3に入るセンサーデータはそろえる
-#define AD2 58  //今はA0と本来のA0はそろっている。
-#define AD3 55
-//#define AD4 58
-//#define AD5 59
-//#define AD6 60
-#define AD7 61
-//54A0、なし、55A1制圧タンク、56A2足1-弁2と3、57A3足2弁5と6,58A4足3弁7と8、59A5負圧タンク向け
+#define AD2 58  //今はA0と本来のA0はそろっていない。要は+54
+#define AD3 60
+#define AD4 61
+#define AD5 62
+#define AD6 63
+#define AD7 64
+#define AD8 55
+#define AD9 59
+
+//54A0、なし、55A1正圧タンク、56A2足1-弁2と3、57A3足2弁5と6,58A4足3弁7と8、59A5負圧タンク，60A6足4弁10と11，61A2足5弁12と13，62A8足6弁14と15，63A9足7弁16と17，64A10足8弁18と19
 int current = 0;
 int count = 0; //データログ用のカウンタ
 int pin = AD0; // 初期のADCチャンネル
@@ -23,11 +26,12 @@ int EXITleg[10] = {0}; // 弁のピン番号を格納する配列
 int inleg[10] = {0}; //上に同じ
 int invuc[4] = {0}; //上に同じ
 
-int nontauchpuls = 5; //不感帯の幅　たぶんアナログリードだから要計算
+int nontauchpuls = 25; //不感帯の幅　たぶんアナログリードだから要計算
 int airroomNum = 8; // 4脚 x 2空気室 = 8
 int sensorNum = 10; //使ってるセンサの数　配列に使うタンク2空気室にづつで10
 //+50 必要？
 //センサ殺した？
+//
 
 int date[2][15] = {{0}};  // 全ての要素を0で初期化
  //データバッファ領域
@@ -68,14 +72,18 @@ void setup() {
   EXITleg[8] = 19;
   invuc[1] = 4;
   invuc[2] = 9;
+  invuc[3] = 20;
+  invuc[4] = 21;
   // 他のピン番号の設定も同様に行う
-  // ここはセットアップ。今回使うのはアナログピン1~3
   // 圧力計ごとにアナログピンを使う
   Serial.begin(38400);
   for (int i = 1; i <= 8; i++) {
     pinMode(EXITleg[i], OUTPUT);
     pinMode(inleg[i], OUTPUT);
   }
+  for (int i = 1; i <= 4; i++){
+    pinMode(invuc[i], OUTPUT);
+  } 
 
   delay(2000);
   MsTimer2::start(); 
@@ -87,7 +95,7 @@ void loop() {
   switch (currentMode) {
     case PC_COMMAND_MODE:
       if (Serial.available() >= 3) {
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 12; i++) {
           targetPressure[i] = Serial.parseInt();//例えば50-60-70にセットするときは50 60 70と送信 吸盤ように2個追加
         }
       }
@@ -96,37 +104,62 @@ void loop() {
       }
       break;
     case TIME_WALK_MODE:
-      if (currentTime*25  - timeWalkStartTime < 15000) {
+      if (currentTime*25  - timeWalkStartTime < 12000) {
         // 5秒ごとにtargetPressureを任意セットに切り替える
         // 5秒ずれで動作する
-        if (currentTime*25 < 5000) {
-          targetPressure[0] = 150 ;
-          targetPressure[1] = 0 ;
-          targetPressure[2] = 0;
-          targetPressure[3] = 0 ;
-          targetPressure[4] = 150 ;
-          targetPressure[5] = 130;
-          targetPressure[6] = 150 ;
-          targetPressure[7] = 0 ;
-        } else if (currentTime * 25 < 10000) {
-          targetPressure[0] = 150 ;
-          targetPressure[1] = 130 ;
-          targetPressure[2] = 150;
-          targetPressure[3] = 0 ;
-          targetPressure[4] = 0 ;
-          targetPressure[5] = 0;
-          targetPressure[6] = 150 ;
-          targetPressure[7] = 130 ;
+        if (currentTime*25 < 3000) {
+          targetPressure[0] = 30 ;
+          targetPressure[1] = 270 ;
+          targetPressure[8] = 1;
+          targetPressure[2] = 250;
+          targetPressure[3] = 270 ;
+          targetPressure[9] = 1;
+          targetPressure[4] = 280 ;
+          targetPressure[5] = 30;
+          targetPressure[10] = 0;
+          targetPressure[6] = 30 ;
+          targetPressure[7] = 30 ;
+          targetPressure[11] = 0;
+        } else if (currentTime * 25 < 6000) {
+          targetPressure[0] = 280 ;
+          targetPressure[1] = 270 ;
+          targetPressure[8] = 1;
+          targetPressure[2] = 250;
+          targetPressure[3] = 30 ;
+          targetPressure[9] = 0;
+          targetPressure[4] = 30 ;
+          targetPressure[5] = 30;
+          targetPressure[10] = 0;
+          targetPressure[6] = 30 ;
+          targetPressure[7] = 270 ;
+          targetPressure[11] = 1;
+        } else if (currentTime * 25 < 9000) {
+          targetPressure[0] = 280 ;
+          targetPressure[1] = 30 ;
+          targetPressure[8] = 0;
+          targetPressure[2] = 30;
+          targetPressure[3] = 30 ;
+          targetPressure[9] = 0;
+          targetPressure[4] = 30 ;
+          targetPressure[5] = 270;
+          targetPressure[10] = 1;
+          targetPressure[6] = 250 ;
+          targetPressure[7] = 270 ;
+          targetPressure[11] = 1;
         } else {
-          targetPressure[0] = 0 ;
-          targetPressure[1] = 0 ;
-          targetPressure[2] = 150;
-          targetPressure[3] = 130 ;
-          targetPressure[4] = 150 ;
-          targetPressure[5] = 0;
-          targetPressure[6] = 0 ;
-          targetPressure[7] = 0 ;
-          }
+          targetPressure[0] = 60 ;
+          targetPressure[1] = 60 ;
+          targetPressure[8] = 0;
+          targetPressure[2] = 60;
+          targetPressure[3] = 270 ;
+          targetPressure[9] = 1;
+          targetPressure[4] = 280 ;
+          targetPressure[5] = 270;
+          targetPressure[10] = 1;
+          targetPressure[6] = 250 ;
+          targetPressure[7] = 60 ;
+          targetPressure[11] = 0;
+        }
       } else {
         currentTime = 0; // タイマーリセット
       }
@@ -142,10 +175,15 @@ void flash() {
    get_current_data();
   }
 
-  for (int i = 0; i < airroomNun; i++){
+  for (int i = 0; i < airroomNum; i++){
 
    controlAirPressure(i); // 空気圧制御を25msごとに実行 
   }
+  
+  digitalWrite(invuc[1], targetPressure[8]);
+  digitalWrite(invuc[2], targetPressure[9]);
+  digitalWrite(invuc[3], targetPressure[10]);
+  digitalWrite(invuc[4], targetPressure[11]);
   currentTime = currentTime + 1;
   datelog();
 }
@@ -157,9 +195,7 @@ void flash() {
 
 void get_current_data() {
   current = analogRead(pin);
-  if(pin > 60){
-    current = current + 50;
-  }
+
   next_channel();
   current_to_bafa();
 }
@@ -173,6 +209,9 @@ void next_channel() {
     case AD4: pin = AD5; break;
     case AD5: pin = AD6; break;
     case AD6: pin = AD7; break;
+    case AD7: pin = AD8; break;
+    case AD8: pin = AD9; break;
+    case AD9: pin = AD0; break;
     default: pin = AD0; break;
   }
 }
